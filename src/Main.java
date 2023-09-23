@@ -14,7 +14,7 @@ public class Main {
         graph.addEdge(v1, v2, new Properties("A","12str",3));
         graph.addEdge(v1, v3, new Properties("A","13str",8));
         graph.addEdge(v3, v1, new Properties("A","13str",8));
-        graph.addEdge(v2, v3, new Properties("A","23str",2));
+        graph.addEdge(v3, v2, new Properties("A","23str",2));
 
         /*
         *
@@ -32,7 +32,8 @@ public class Main {
         * */
 
         // should print 0.
-        System.out.println(dijkstra.getNearestBaseToEdge(graph, graph.getStreet("A","13str"), 3));
-
+        //System.out.println(dijkstra.getNearestBaseToEdge(graph, graph.getStreet("A","13str"), 3));
+        // should print [2,0, 1, 3].
+        System.out.println(dijkstra.getShortestPath(graph, 2,3));
     }
 }

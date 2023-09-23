@@ -1,19 +1,21 @@
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class Dijkstra {
 
-    HashMap<Integer,Boolean> visited = new HashMap<>();
-    HashMap<Integer,Integer> distancesFromSource = new HashMap<>();
+
+    public List<Integer> getShortestPath (Graph graph, final int source, final int target){
+        HashMap<Integer, Integer> parentMap = new HashMap<>();
+        HashMap<Integer, Integer> distancesFromSource = dijkstra(graph, source, false, parentMap);
+        return reconstructShortestPath(source, target, distancesFromSource, parentMap);
+    }
+
 
     /**
      * @return the shortest distance between two vertices.
      * */
     public int getShortestDistance(final int source, final int target, Graph graph) {
-        dijkstra(graph, source, false);
+        HashMap<Integer,Integer> distancesFromSource = dijkstra(graph, source, false, new HashMap<>());
         return distancesFromSource.get(target);
     }
 
@@ -21,8 +23,8 @@ class Dijkstra {
      * @return the nearest base of a certain type to the edge.
      * */
     public int getNearestBaseToEdge(Graph graph, final Edge targetEdge, final int baseType) {
-        HashMap<Integer, Integer> nearestBasesToVertexA = findNearestBases(graph, targetEdge.getSource().getVertexId(), baseType, false);
-        HashMap<Integer, Integer> nearestBasesToVertexB = findNearestBases(graph, targetEdge.getSource().getVertexId(), baseType, true);
+        HashMap<Integer, Integer> nearestBasesToVertexA = findNearestBases(graph, targetEdge.getSource().getVertexId(), baseType);
+        HashMap<Integer, Integer> nearestBasesToVertexB = findNearestBases(graph, targetEdge.getSource().getVertexId(), baseType);
 
         int BaseA = nearestBasesToVertexA.entrySet().stream()
                 .min(Map.Entry.comparingByValue())
@@ -35,10 +37,10 @@ class Dijkstra {
     }
 
     // returns a map of all bases of a given type and their distance from the source.
-    private HashMap<Integer, Integer> findNearestBases(Graph graph, int vertexId, int baseType, boolean reverse) {
+    private HashMap<Integer, Integer> findNearestBases(Graph graph, int vertexId, int baseType) {
         HashMap<Integer, Integer> nearestBases = new HashMap<>();
 
-        dijkstra(graph, vertexId, reverse);
+        HashMap<Integer,Integer> distancesFromSource = dijkstra(graph, vertexId, true, new HashMap<>());
 
         Set<Integer> filteredVertexIds = distancesFromSource.keySet().stream()
                 .filter(vId -> graph.getVertices().get(vId).getBaseType() == baseType)
@@ -51,9 +53,9 @@ class Dijkstra {
         return nearestBases;
     }
 
-    private void dijkstra(Graph graph, final int source, boolean reverse) {
-        visited = new HashMap<>();
-        distancesFromSource = new HashMap<>();
+    private HashMap<Integer,Integer> dijkstra(Graph graph, final int source, boolean reverse, HashMap<Integer,Integer> parentMap) {
+        HashMap<Integer,Boolean> visited = new HashMap<>();
+        HashMap<Integer,Integer> distancesFromSource = new HashMap<>();
 
         for (Vertex vertex : graph.getVertices().values()) {
             visited.put(vertex.getVertexId(), false);
@@ -67,7 +69,20 @@ class Dijkstra {
             visited.put(current.getVertexId(), true);
 
             // iterate through neighbors and relax edges.
-            relaxEdges(current, distancesFromSource, reverse);
+            updateParent(current, distancesFromSource, reverse, parentMap);
+        }
+        return distancesFromSource;
+    }
+
+    private void updateParent(Vertex vertex, HashMap<Integer, Integer> distancesFromSource,
+                              boolean reverse, HashMap<Integer, Integer> parentMap) {
+        for (Edge edge : vertex.getEdges(reverse)) {
+            int newDistance = distancesFromSource.get(vertex.getVertexId()) + edge.getWeight();
+            int oldDistance = distancesFromSource.get(edge.getTarget().getVertexId());
+            if (newDistance < oldDistance) {
+                distancesFromSource.replace(edge.getTarget().getVertexId(), newDistance);
+                parentMap.put(edge.getTarget().getVertexId(), vertex.getVertexId()); // Update parent
+            }
         }
     }
 
@@ -87,15 +102,20 @@ class Dijkstra {
         return null;
     }
 
-    // updates the tentative distance of all edges connected to the vertex.
-    private void relaxEdges(Vertex vertex, HashMap<Integer,Integer> distancesFromSource, boolean reverse) {
-        for (Edge edge : vertex.getEdges(reverse)) {
-            int newDistance = distancesFromSource.get(vertex.getVertexId()) + edge.getWeight();
-            int oldDistance = distancesFromSource.get(edge.getTarget().getVertexId());
-            if (newDistance < oldDistance) {
-                distancesFromSource.replace(edge.getTarget().getVertexId(), newDistance);
-            }
+    private List<Integer> reconstructShortestPath(int source, int target,
+                                                  HashMap<Integer, Integer> distancesFromSource,
+                                                  HashMap<Integer, Integer> parentMap) {
+        List<Integer> path = new ArrayList<>();
+        int current = target;
+
+        while (current != source) {
+            path.add(current);
+            current = parentMap.get(current);
         }
+
+        path.add(source);
+        Collections.reverse(path); // Reverse the list to get the correct order.
+        return path;
     }
 
 }
